@@ -44,7 +44,9 @@ class Utils(Plugin):
 
         return activities
 
-    def get_meminfo(self, package_name):
+    def get_meminfo(self, package_name, pid):
+        if package_name and pid:
+            raise ValueError("you can choose either to get meminfo of package_name or pid but not both!")
         total_meminfo_re = re.compile('\s*TOTAL\s*(?P<pss>\d+)'
                                       '\s*(?P<private_dirty>\d+)'
                                       '\s*(?P<private_clean>\d+)'
@@ -61,6 +63,26 @@ class Utils(Plugin):
             return MemInfo(**match.groupdict())
         else:
             return MemInfo(0, 0, 0, 0, 0, 0, 0)
+        
+    def get_pids(self, package_name, toybox=False):
+        # Because the version of `ps` is too much,
+        # For example, the `ps` of toybox needs `-A` to list all process, but the `ps` of emulator doesn't.
+        # So we use 'ps' and 'ps -A' to get all process information.
+
+        cmds = ["ps | grep {}", "ps -A | grep {}"]
+        for cmd in cmds:
+            result = self.shell(cmd.format(package_name))
+            if result:
+                break
+
+        if result:
+            processes = result.strip().split("\n")
+            pids = []
+            for process in processes:
+                pids.append(process.split()[1])
+            return pids
+        else:
+            return None
 
     def get_pid(self, package_name, toybox=False):
         # Because the version of `ps` is too much,
